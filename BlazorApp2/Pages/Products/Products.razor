@@ -1,0 +1,90 @@
+﻿@page "/products"
+@using BlazorApp2.Shared;
+@using BlazorApp2.Models;
+@using BlazorApp2.Services;
+@using Microsoft.AspNetCore.WebUtilities;
+@using Microsoft.Extensions.Primitives;
+@inject ILogger<Products> logger;
+@inject IProductService productService;
+@inject NavigationManager NavigationManager;
+@inject IJSRuntime JSRuntime;
+@inject IToastService toastService;
+
+
+
+<PageTitle>Products</PageTitle>
+
+<ModuleTitle Title="Products"></ModuleTitle>
+
+<button class="btn btn-dark" @onclick="@(() => NavigationManager.NavigateTo("/addproduct"))">Go to add products</button>
+
+
+<style>
+
+</style>
+
+@if(products is not null &&  products.Count > 0)
+{
+    <div class="products-container">
+        @foreach (var product in products)
+        {
+            <div class="card">
+                <img class="card-img-top" src="@product.Images[0]" alt="Product" loading="lazy" width="270" height="210">
+                <div class="card-body">
+                    <h4><b>@product.Title</b></h4>
+                    <p>@product.Price?.ToString("C")</p>
+                    <button title="Delete" class="btn btn-danger btn-delete" @onclick="@(() => DeleteProduct(product))"> <span class="oi oi-trash">X</span> </button>
+                    <button title="Edit" class="btn btn-secondary btn-edit" @onclick="@(() => EditProduct(product.Id))"> <span class="">Edit</span> </button>
+
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <p>No hay productos para mostrar</p>
+}
+
+@code {
+    private List<Product>? products;
+
+    private async Task GetProducts() 
+    {
+        products = await productService.Get();
+    }
+
+    private async Task DeleteProduct(Product product)
+    {
+        if(!await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to remove {product.Title}"))
+        {
+            return;
+        }
+
+        await productService.Delete(product.Id);
+        toastService.ShowSuccess("Product deleted");
+        await GetProducts();
+    }
+
+    // private async Task EditProduct(int productId)
+    // {
+    //     NavigationManager.NavigateTo("/editproduct/" + productId);
+    // }
+
+    private async Task EditProduct(int productId)
+    {
+        var query = new Dictionary<string, StringValues>
+            {
+                ["productId"] = productId.ToString()
+            };
+
+        var uri = QueryHelpers.AddQueryString("/editproduct", query);
+
+        NavigationManager.NavigateTo(uri);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetProducts();
+    }
+}
